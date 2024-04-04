@@ -1,0 +1,13 @@
+{
+  "type": "module",
+  "main": "server.cjs",
+  "scripts": {
+    "start": "node server.cjs"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "node-fetch": "^2.6.1",
+    "punycode": "^2.3.1"
+  }
+}
