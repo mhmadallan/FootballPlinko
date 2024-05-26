@@ -5,8 +5,6 @@ it's similair to Plinko( the gambling online game) except it's not for gambling,
 <br />
 <br />
 <br />
-<br />
-<br />
-<br />
+
 _
 ![a screenshot for The game](/images/Capture.PNG)
