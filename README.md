@@ -4,4 +4,9 @@ The player first chooses the football match then a game is set to predict the re
 it's similair to Plinko( the gambling online game) except it's not for gambling, it's just for fun and to prdict the upcoming football matches results.
 <br />
 <br />
+<br />
+<br />
+<br />
+<br />
+_
 ![a screenshot for The game](/images/Capture.PNG)
