@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Soccer Prediction Game</title>
+<style>
+  /* Add your custom CSS styles here */ 
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    text-shadow: 0 0 3px #ccc;
+    margin: 0;
+    font-family: "Poppins", sans-serif;
+    background-color:#f5f4eb;
+  }
+  h1 {
+    text-align: center;
+  }
+  #matchesList {
+    
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    justify-content: center;
+    padding: 20px;
+  }
+  .match {
+    padding: 10px;
+    border: 1px solid #ccc;
+    transition: background-color 0.3s;
+    cursor: pointer;
+    border-radius: 10px;
+
+  }
+  .vs{
+    padding-left: 100px;
+    visibility: hidden;
+  }
+  .team {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+  }
+  .team img {
+    width: 30px;
+    height: 30px;
+    margin-right: 10px;
+  }
+</style>
+</head>
+<body>
+<h1>Today Football Matches
+</h1>
+<div id="matchesList"></div>
+<script>
+  // Function to handle match click
+  function handleMatchClick(homeTeam, awayTeam, homeTeamPosition, awayTeamPosition) {
+    // Store the team names and positions in localStorage
+    localStorage.setItem('homeTeamName', homeTeam.name);
+    localStorage.setItem('awayTeamName', awayTeam.name);
+    localStorage.setItem('homeTeamLogo', homeTeam.crest);
+    localStorage.setItem('awayTeamLogo', awayTeam.crest);
+   /* localStorage.setItem('homeTeamPosition', homeTeamPosition);
+    localStorage.setItem('awayTeamPosition', awayTeamPosition);*/
+
+    
+    // Redirect to another page
+    window.location.href = 'plinko.html';
+  }
+
+  // Function to display matches grouped by competition
+  function displayMatchesByCompetition(matchesData) {
+    const matchesListDiv = document.getElementById("matchesList");
+
+    // Group matches by competition
+    const matchesByCompetition = {};
+    matchesData.matches.forEach((match) => {
+      const competition = match.competition.name;
+      if (!matchesByCompetition[competition]) {
+        matchesByCompetition[competition] = [];
+      }
+      matchesByCompetition[competition].push(match);
+    });
+
+    // Display matches grouped by competition
+    for (const competition in matchesByCompetition) {
+      matchesByCompetition[competition].forEach((match) => {
+        const matchDiv = document.createElement("div");
+        matchDiv.classList.add("match");
+        matchDiv.style.backgroundColor = getColorFromString(competition);
+
+        // Add click event listener to the matchDiv
+        matchDiv.addEventListener("click", () => {
+          // You can perform any action you want when the match is clicked
+          handleMatchClick(match.homeTeam, match.awayTeam, match.homeTeamPosition, match.awayTeamPosition);
+        });
+
+        const homeTeamDiv = document.createElement("div");
+        homeTeamDiv.classList.add("team");
+        const homeTeamImg = document.createElement("img");
+        homeTeamImg.src = match.homeTeam.crest;
+        const homeTeamName = document.createElement("span");
+        homeTeamName.textContent = match.homeTeam.name;
+        homeTeamDiv.appendChild(homeTeamImg);
+        homeTeamDiv.appendChild(homeTeamName);
+
+        const vsText = document.createElement("span");
+        vsText.textContent = " vs ";
+        vsText.classList.add("vs");
+        const awayTeamDiv = document.createElement("div");
+        awayTeamDiv.classList.add("team");
+        const awayTeamImg = document.createElement("img");
+        awayTeamImg.src = match.awayTeam.crest;
+        const awayTeamName = document.createElement("span");
+        awayTeamName.textContent = match.awayTeam.name;
+        awayTeamDiv.appendChild(awayTeamImg);
+        awayTeamDiv.appendChild(awayTeamName);
+
+        matchDiv.appendChild(homeTeamDiv);
+        matchDiv.appendChild(vsText);
+        matchDiv.appendChild(awayTeamDiv);
+
+        matchesListDiv.appendChild(matchDiv);
+      });
+    }
+  }
+
+  // Generate a color based on the given string
+  function getColorFromString(str) {
+    // Convert the string to a hash code
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+
+    // Generate a color based on the hash code
+    const color = Math.abs(hash).toString(16).substring(0, 6);
+    return '#' + '0'.repeat(6 - color.length) + color; // Ensure the color is 6 digits long
+  }
+
+  // Immediately fetch matches when the page loads
+  makeApiRequest();
+
+  function makeApiRequest() {
+    const apiUrl = "http://localhost:3000/api/matches"; // Update the URL to your server endpoint
+    fetch(apiUrl)
+      .then((response) => response.json())
+      .then((data) => {
+       // console.log(data)
+        displayMatchesByCompetition(data);
+      })
+      .catch((error) => {
+        console.error("Error making API request:", error);
+        document.getElementById("result").innerText =
+          "Error making API request. Check the console for details.";
+      });
+  }
+
+  // Function to fetch standings data
+  function fetchStandingsData() {
+    const apiUrl = "http://localhost:3000/api/standings";
+    fetch(apiUrl)
+      .then((response) => response.json())
+      .then((data) => {
+       
+        var arr = JSON.stringify(data);
+
+        // Save the string in the localStorage under a specific key
+        localStorage.setItem("data", arr);
+      })
+      .catch((error) => {
+        console.error("Error fetching standings data:", error);
+      });
+  }
+
+  // Call the function to fetch standings data
+  fetchStandingsData();
+</script>
+
+</body>
+</html>
