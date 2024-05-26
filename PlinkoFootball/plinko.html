@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css?family=Sofia&effect=neon|outline|emboss|shadow-multiple" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Honk&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Anta&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+    rel="stylesheet">
+  <title>Momo the Predictor </title>
+</head>
+
+<body>
+  <div class="score-board" id="scoreBoard"></div>
+  <div id="teamScores">
+    <div id="teamAScore" class="teamScore b4Score">
+      <img id="teamAScoreImg" />
+
+      <span id="teamAScoreText">0</span>
+      <span id="teamAColor"></span>
+    </div>
+    <div id="teamBScore" class="teamScore b4Score">
+      <img id="teamBScoreImg" />
+      <span id="teamBScoreText">0</span>
+      <span id="teamBColor"></span>
+    </div>
+  </div>
+
+  <div id="scoreModal" class="modal js-container container">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal()">&times;</span>
+      <div id="scoreContent"></div>
+    </div>
+  </div>
+  <div id="btn" class="drop-all-button font-effect-neon" onclick="dropAllBalls()">
+    Predict
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.17.1/matter.min.js"></script>
+
+  <script>
+    // Create an audio context
+    /*var audioContext = new (window.AudioContext ||
+       window.webkitAudioContext)();
+
+     // Load an audio file (replace 'path/to/tune.mp3' with the actual path to your audio file)
+     var audioSource = "ballTap.wav";
+     var rectangleAudioSource = "goal.wav";
+     var audioBuffer;
+     var rectangleAudioBuffer;
+
+     // Fetch the audio file
+     fetch(audioSource)
+       .then((response) => response.arrayBuffer())
+       .then((data) => audioContext.decodeAudioData(data))
+       .then((buffer) => {
+         audioBuffer = buffer;
+       })
+       .catch((error) => console.error("Error loading audio:", error));
+
+     fetch(rectangleAudioSource)
+       .then((response) => response.arrayBuffer())
+       .then((data) => audioContext.decodeAudioData(data))
+       .then((buffer) => {
+         rectangleAudioBuffer = buffer;
+       })
+       .catch((error) =>
+         console.error("Error loading rectangle audio:", error)
+       );
+
+     // Function to play the audio
+     function playTune(buffer) {
+       if (buffer) {
+         var source = audioContext.createBufferSource();
+         source.buffer = buffer;
+         source.connect(audioContext.destination);
+         source.start(0);
+       }
+     }*/
+    // Matter.js module aliases
+    var Engine = Matter.Engine,
+      Render = Matter.Render,
+      World = Matter.World,
+      Bodies = Matter.Bodies,
+      Composite = Matter.Composite;
+    Body = Matter.Body;
+
+    // Create an engine
+    var engine = Engine.create();
+    engine.world.gravity.y = 1; // Increase the value for stronger gravity
+    // Create a renderer
+    var render = Render.create({
+      element: document.body,
+      engine: engine,
+      options: {
+        width: window.innerWidth * 2,  // -50
+        height: window.innerHeight,
+        wireframes: false,
+        background: "#025229",
+      },
+    });
+
+    // Create boundaries
+    var ground = Bodies.rectangle(
+      window.innerWidth / 2,
+      window.innerHeight,
+      window.innerWidth,
+      1,
+      { id: 899, isStatic: true }
+    );
+
+    World.add(engine.world, ground);
+
+    // Create score rectangles
+    var scores = [
+      { score: 1, color: "#FFDDAA", tal: 1 },
+      { score: 2, color: "#FFCC88", tal: 2 },
+      { score: 3, color: "#FFAA44", tal: 4 },
+      { score: 4, color: "#FF8822", tal: 8 },
+      { score: 5, color: "#FF6600", tal: 16 },
+      { score: 6, color: "#FF4400", tal: 32 },
+      { score: -1, color: "#FFDDAA", tal: 1 },
+      { score: -2, color: "#FFBB66", tal: 2 },
+      { score: -3, color: "#FF9933", tal: 4 },
+      { score: -4, color: "#FF7711", tal: 8 },
+      { score: -5, color: "#FF5500", tal: 16 },
+      { score: -6, color: "#FF3300", tal: 32 },
+    ];
+
+    var teamAScore = 0;
+    var teamBScore = 0;
+
+    // Retrieve the string from the localStorage
+    var storedJsonString = localStorage.getItem("data");
+
+    // Parse the string back to a JSON data array using JSON.parse
+    var data = JSON.parse(storedJsonString);
+
+    const homeTeamPosition = parseInt(data[0].standings[0].table.findIndex(team => team.team.name === localStorage.getItem('homeTeamName')) + 1);
+    const awayTeamPosition = parseInt(data[0].standings[0].table.findIndex(team => team.team.name === localStorage.getItem('awayTeamName')) + 1);
+    const homeTeamName = localStorage.getItem("homeTeamName");
+    const homeTeamLogo = localStorage.getItem("homeTeamLogo");
+    const awayTeamName = localStorage.getItem("awayTeamName");
+    const awayTeamLogo = localStorage.getItem("awayTeamLogo");
+    //var teams = []
+
+    var teamAScoreDiv = document.getElementById("teamAScoreText");
+    var teamBScoreDiv = document.getElementById("teamBScoreText");
+
+    var teamAScoreImg = document.getElementById("teamAScoreImg");
+    var teamAScoreImg = document.getElementById("teamAScoreImg");
+    teamAScoreDiv.textContent = `${homeTeamName}: ${teamAScore}`;
+    teamBScoreDiv.textContent = `${awayTeamName}: ${teamBScore}`;
+    teamAScoreImg.src = `${homeTeamLogo}`;
+    teamBScoreImg.src = `${awayTeamLogo}`;
+
+    var lastPolygonPosition; // Variable to store the position of the last polygon
+
+    // Create rows of polygons
+    for (var i = 0; i < 11; i++) {
+      var numPolygons = i + 3;
+      if (innerWidth > 1600) {
+        var startX =
+          window.innerWidth / 2 -
+          ((numPolygons - 1) * window.innerWidth) / 72; // 25
+      } else if (innerWidth < 1600 && innerWidth > 800) {
+        var startX =
+          window.innerWidth / 2 -
+          ((numPolygons - 1) * window.innerWidth) / 40;
+      } else {
+        var startX =
+          window.innerWidth / 2 -
+          ((numPolygons - 1) * window.innerWidth) / 27;  //30 // 2 * var x below
+      }
+
+      for (var j = 0; j < numPolygons; j++) {
+        if (innerWidth > 1600) {
+          var x = startX + (j * window.innerWidth) / 36; // 50 // condition if innerwidth > 1000 else window.innerWidth/14 or 12
+          var y = 230 + (i * window.innerHeight) / 18; // 50
+          var polygonRadius = window.innerWidth / 225;
+          var shadowPolygonRadius = window.innerWidth / 153; // 150;
+        } else if (innerWidth > 800 && innerWidth < 1600) {
+          var x = startX + (j * window.innerWidth) / 20; // 50 // condition if innerwidth > 1000 else window.innerWidth/14 or 12
+          var y = 230 + (i * window.innerHeight) / 18;
+          var polygonRadius = window.innerWidth / 105;
+          var shadowPolygonRadius = window.innerWidth / 85;
+        } else {
+          var x = startX + (j * window.innerWidth) / 13.5; // 15 // condition if innerwidth > 1000 else window.innerWidth/14 or 12
+          var y = 250 + (i * window.innerHeight) / 24;
+          var polygonRadius = window.innerWidth / 75;
+          var shadowPolygonRadius = window.innerWidth / 60;
+        }
+
+        if (i === 10) {
+          lastPolygonPosition = { x, y }; // Store the position of the last polygon
+        }
+
+        var polygon = Bodies.polygon(x, y, 50, polygonRadius, {
+          // 8
+          isStatic: true,
+          render: { fillStyle: "#f0f0f0" },
+        });
+        var shadowPolygon = Bodies.polygon(x, y, 50, shadowPolygonRadius, {
+          //12
+          isStatic: true,
+          restitution: 0.6,
+          render: {
+            fillStyle: "rgba(255, 255, 190, 0.5)",
+            strokeStyle: "transparent",
+            visible: false,
+          },
+        });
+
+        World.add(engine.world, [polygon, shadowPolygon]);
+      }
+    }
+
+    var isRectHit = true;
+    var btn = document.getElementById("btn");
+    btn.style.left = `${window.innerWidth / 2 - 50}px`;
+    btn.style.top = `${lastPolygonPosition.y + 120}px`;
+    //console.log("btnX", btn.style.left);
+    var scoreCounts = {};
+    // Create separate score counts for red and blue balls
+    // Initialize team scores
+
+    // var startingPoint;
+    scores.forEach((score) => {
+      var startingPoint = score.score;
+      var startPosition = 0;
+      var yAxisPosition = 0;
+      if (score.score > 0) {
+        startingPoint--;
+      }
+      // for mobile devices
+      /*var rectHeight = 28; // 35
+      var rectWidth = 33;  // 47*/
+      if (window.innerWidth > 1600) {
+        var rectWidth = innerWidth / 36;  //36
+        var rectHeight = innerHeight / 27;
+        var startPosition = window.innerWidth / 2 + startingPoint * (rectWidth + 1) + 25; //55
+        yAxisPosition = lastPolygonPosition.y + 50;
+      }
+      else if (window.innerWidth < 800) {
+        var rectWidth = innerWidth / 13.5;
+        var rectHeight = innerHeight / 27;
+        var startPosition = window.innerWidth / 2 + startingPoint * (rectWidth + 1) + 20; // 35
+        yAxisPosition = lastPolygonPosition.y + 50;
+      }
+      else {
+        var rectWidth = innerWidth / 20;
+        var rectHeight = innerHeight / 27;
+        var startPosition = window.innerWidth / 2 + startingPoint * (rectWidth + 1) + 25;
+        yAxisPosition = lastPolygonPosition.y + 45;
+      }
+
+
+      var rect = Bodies.rectangle(
+        startPosition,
+        yAxisPosition,
+        rectWidth,
+        rectHeight,
+        {
+          id: score.score,
+          isStatic: true,
+          render: {
+            fillStyle: isRectHit ? score.color : "red", // Orange gradient fill using CSS, // Set a placeholder fill color
+          },
+          chamfer: { radius: 10 }, // Set the radius for rounded edges
+          tal: score.tal,
+          color: score.color,
+        }
+      );
+      World.add(engine.world, [rect]);
+
+      // Add text to the rectangle using HTML elements
+      var textElement = document.createElement("div");
+      textElement.textContent = score.tal.toString();
+      textElement.style.position = "absolute";
+      textElement.style.top = `${rect.position.y - rectHeight / 3}px`; // Adjust position as needed
+      textElement.style.left = `${rect.position.x - rectWidth / 6}px`; // Adjust position as needed
+      document.body.appendChild(textElement);
+      scoreCounts[score.score] = 0;
+    });
+    // Initialize the score counts for each color
+
+    var maxBalls = 100;
+    var droppedBalls = 0;
+    var currentBallColor = "red"; // Start with the red ball
+    var logoA = document.getElementById('teamAScoreImg');
+    var logoB = document.getElementById('teamBScoreImg');
+    var currentLogo = logoA.src
+
+    // console.log(polygon);
+    function dropAllBalls() {
+      setInterval(generateBalls, 500);
+    }
+
+    function generateBalls() {
+
+      var lowerTeamPosition = homeTeamPosition > awayTeamPosition ? awayTeamPosition : homeTeamPosition;
+      var positionDifference = Math.abs(homeTeamPosition - awayTeamPosition);
+      positionDifference = positionDifference > 5 ? 6 : positionDifference;
+      var homeTeamBalls = Math.floor((maxBalls + positionDifference) / 2); //27 //23
+      var awayTeamBalls = maxBalls - homeTeamBalls;
+      var lowerTeamBalls = homeTeamBalls > awayTeamBalls ? awayTeamBalls : homeTeamBalls
+      var scaleFactor = 0.1;
+      var x = window.innerWidth / 2 - (Math.random() * 60 - 25);
+      if (droppedBalls < maxBalls) {
+        //var ballColor = droppedBalls % 2 === 0 ? 'red' : 'blue';
+
+        if (droppedBalls <= 2 * lowerTeamBalls) {
+          // Toggle the ball color for the next drop
+          // currentBallColor = currentBallColor === "red" ? "blue" : "red";
+
+          currentLogo = currentLogo === homeTeamLogo ? awayTeamLogo : homeTeamLogo;
+
+        }
+        else {
+
+          //currentBallColor = lowerTeamPosition === homeTeamPosition? "red":"blue";
+
+          currentLogo = lowerTeamPosition === homeTeamPosition ? homeTeamLogo : awayTeamLogo;
+
+        }
+
+        if(currentLogo.endsWith(".svg")){
+           scaleFactor = 0.08
+        }
+        else{
+           scaleFactor = 0.15
+        }
+
+       // var scaleFactor =  2 * 9 / Math.max(logoA.width, logoA.height); // where 9 is the circle radius
+        var ball = Bodies.circle(x, 200, 9, { // x , 70, 12.5
+          restitution: 0.6,
+          render: {
+            //fillStyle: currentBallColor,
+            isStatic:true,
+            fillStyle: 'black', // just for the condition in displayResult()
+            sprite: //textureOptions 
+            {
+              texture: currentLogo, // Set the image as the texture
+              xScale: scaleFactor, // Set the scale factor for the x-axis
+              yScale: scaleFactor,// Set the scale factor for the y-axis 
+              /* xoffset: 0.5,
+               yoffset: 0.5*/
+            },
+            strokeStyle: 'black',
+            lineWidth:2,
+          },
+          
+        });
+
+    
+        ball.userData = { color: currentLogo };
+
+        
+       // World.add(engine.world, [whiteBackground, ball, constraint]);
+        World.add(engine.world, [ball]);
+
+        // Handle collisions
+        Matter.Events.on(engine, "collisionStart", function (event) {
+          var pairs = event.pairs;
+
+          // console.log(droppedBalls);
+          pairs.forEach((pair) => {
+            var bodyA = pair.bodyA;
+            var bodyB = pair.bodyB;
+
+            if (
+              bodyA.label === "Rectangle Body" &&
+              bodyB.label === "Circle Body" &&
+              !pair.isSensor
+            ) {
+              glowUpRectangle(bodyA);
+              //isRectHit = false;
+              if (!pair.scored) {
+                // Retrieve the color from the ball's userData
+                var ballColor = bodyB.userData.color;
+
+                pair.scored = true;
+
+                updateScores(bodyA.tal, ballColor);
+
+                fadeOutBall(bodyB);
+
+                if (droppedBalls === maxBalls) {
+
+                  // Callback function to be executed after the last ball is removed
+                  checkRemainingBalls();
+                }
+              }
+            } else if (
+              (bodyA.label === "Rectangle Body" ||
+                bodyB.label === "Rectangle Body") &&
+              !pair.isSensor
+            ) {
+
+
+              if (bodyA.label === "Circle Body") {
+                fadeOutBall(bodyA);
+              } else if (bodyB.label === "Circle Body") {
+                fadeOutBall(bodyB);
+              }
+
+              if (droppedBalls === maxBalls) {
+                // Callback function to be executed after the last ball is removed
+                checkRemainingBalls();
+              }
+              //endGame();
+            } else if (
+              bodyA.label === "Circle Body" &&
+              bodyB.label.startsWith("Polygon")
+            ) {
+              // Add a glow effect to the polygon
+              glowUpPolygon(bodyB);
+
+            } else if (
+              bodyB.label === "Circle Body" &&
+              bodyA.label.startsWith("Polygon")
+            ) {
+              // Add a glow effect to the polygon
+              glowUpPolygon(bodyA);
+
+            }
+          });
+        });
+
+        // Check if the maximum number of balls has been reached
+        droppedBalls++;
+        // console.log("looooo",lowerTeamBalls,homeTeamBalls)
+
+
+      }
+
+    }
+
+
+    // Handle fading out the ball
+    function fadeOutBall(ball) {
+      World.remove(engine.world, ball);
+      if (droppedBalls === maxBalls) {
+        checkRemainingBalls();
+      }
+    }
+
+    // Callback function to display the final result
+    // Modify the checkRemainingBalls function
+    function displayResult() {
+      var scoreModal = document.getElementById("scoreModal");
+      var scoreContent = document.getElementById("scoreContent");
+
+      // Clear existing content
+      scoreContent.innerHTML = "";
+
+      if (teamAScore === teamBScore) {
+        scoreContent.innerHTML += "<h2> It's a draw</h2>"
+      }
+      //scoreContent.innerHTML += `<p><img src=${homeTeamLogo}> ${homeTeamName}: ${teamAScore} </p> <p> <img src=${awayTeamLogo}> ${awayTeamName}: ${teamBScore} </p>`;
+      else {
+        scoreContent.innerHTML += `<h3>The Winner is: </h3>`;
+        scoreContent.innerHTML += `<div><img src=${teamAScore > teamBScore ? homeTeamLogo : awayTeamLogo}> <p>${teamAScore > teamBScore ? homeTeamName : awayTeamName}</p></div>`
+
+      }
+      // Show the modal
+      scoreModal.style.display = "block";
+    }
+
+    // Add a function to close the modal
+    function closeModal() {
+      var scoreModal = document.getElementById("scoreModal");
+      // var scoreContent = document.getElementById("scoreContent");
+      scoreModal.style.display = "none";
+      window.location.reload();
+
+    }
+
+    // Function to check if there are remaining balls
+    function checkRemainingBalls() {
+
+      var remainingBalls = engine.world.bodies.filter(
+        (body) =>
+          body.label === "Circle Body" && body.render.fillStyle === "black"//(body.render.fillStyle === "red" ||body.render.fillStyle === "blue")
+          );
+      setTimeout(function () {
+        if (remainingBalls.length === 0) {
+          // All balls have been removed, display the final score alert
+          displayResult();
+        }
+      }, 1000);
+    }
+
+    // Event listener for the afterRemove event
+    Matter.Events.on(engine.world, "afterRemove", function (event) {
+      var removedBodies = event.object;
+      if (removedBodies && removedBodies.length > 0) {
+        checkRemainingBalls();
+      }
+    });
+    // Function to apply a glow effect to a polygon
+    function glowUpPolygon(polygon) {
+      // Play the tune when the ball hits a polygon
+      // playTune(audioBuffer);
+
+      // Change the color of the polygon to represent the glow effect
+      //polygon.render.fillStyle = "yellow"; // You can adjust the color as needed
+      polygon.render.visible = true;
+      // After a delay, revert the color back to the original
+      setTimeout(function () {
+        // polygon.render.fillStyle = "#f0f0f0";
+        // Set it back to the original color
+        if (polygon.render.strokeStyle === "transparent") {
+          polygon.render.visible = false;
+        }
+      }, 500); // Adjust the delay as needed
+    }
+
+    function glowUpRectangle(rectangle) {
+      // Play the tune when the ball hits a rectangle
+      //playTune(rectangleAudioBuffer);
+      //const originalColor = rectangle.render.fillStyle;
+      //console.log(originalColor)
+      rectangle.render.fillStyle = "red";
+
+      setTimeout(function () {
+        // polygon.render.fillStyle = "#f0f0f0";
+        // Set it back to the original color
+
+        rectangle.render.fillStyle = rectangle.color;
+
+      }, 200);
+    }
+
+    // Update team scores and display
+    function updateTeamScores() {
+      var teamA = homeTeamName;
+      var teamB = awayTeamName;
+      var teamAScoretxt = document.getElementById("teamAScoreText");
+      var teamBScoretxt = document.getElementById("teamBScoreText");
+
+      teamAScoretxt.textContent = `${teamA}: ${teamAScore}`;
+      teamBScoretxt.textContent = `${teamB}: ${teamBScore}`;
+
+      var teamAScoreDiv = document.getElementById("teamAScore");
+      var teamBScoreDiv = document.getElementById("teamBScore");
+      // Highlight the team with higher score
+      if (teamAScore > teamBScore) {
+        teamAScoreDiv.classList.remove("b4Score");
+        teamAScoreDiv.classList.add("highlighted");
+        teamBScoreDiv.classList.remove("highlighted");
+        teamBScoreDiv.classList.add("b4Score");
+      } else if (teamBScore > teamAScore) {
+        teamBScoreDiv.classList.remove("b4Score");
+        teamBScoreDiv.classList.add("highlighted");
+        teamAScoreDiv.classList.remove("highlighted");
+        teamAScoreDiv.classList.add("b4Score");
+      } else {
+        teamAScoreDiv.classList.remove("highlighted");
+        teamAScoreDiv.classList.add("b4Score");
+        teamBScoreDiv.classList.remove("highlighted");
+        teamBScoreDiv.classList.add("b4Score");
+      }
+    }
+
+    // Function to update team scores
+    function updateScores(score, bCollor) {
+      /* if (bCollor === "red") {
+         teamAScore += score;
+       } else if (bCollor === "blue") {
+         teamBScore += score;
+       }
+       */
+      if (bCollor === homeTeamLogo) {
+        teamAScore += score;
+      } else if (bCollor === awayTeamLogo) {
+        teamBScore += score;
+      }
+      // Update and display team scores
+      updateTeamScores();
+    }
+
+    // Run the engine
+    Engine.run(engine);
+
+    // Run the renderer
+    Render.run(render);
+
+    // Update the score board
+    function updateScoreBoard() {
+      var scoreBoard = document.getElementById("scoreBoard");
+      scoreBoard.innerHTML = "Score Counts: ";
+      Object.keys(scoreCounts).forEach((score) => {
+        scoreBoard.innerHTML += `${score}: ${scoreCounts[score]} | `;
+      });
+    }
+
+    // Update the score board every 100 milliseconds
+    setInterval(updateScoreBoard, 100);
+    // Function to check if any bodies are moving
+    // Assuming you have already created your Matter.js engine and world
+
+    // Function to check if a body is out of the screen
+    function isBodyOutOfScreen(body) {
+      var bounds = body.bounds;
+
+      // Get the dimensions of the canvas or the window
+      var screenWidth = window.innerWidth; // Replace with your canvas width if needed
+      var screenHeight = window.innerHeight; // Replace with your canvas height if needed
+
+      /* console.log('screenWidth',screenWidth);
+       console.log('screenHeight',screenHeight)*/
+      // Check if any part of the body is outside the screen
+      if (bounds.min.x > screenWidth || bounds.max.x < 0 ||
+        bounds.min.y > screenHeight || bounds.max.y < 0) {
+        return true; // Body is out of the screen
+      }
+
+      return false; // Body is still within the screen
+    }
+
+    // Function to handle bodies moving out of the screen
+    function handleBodyOutOfScreen(body) {
+      // Handle actions when a body moves out of the screen
+      //console.log('Body moved out of the screen:', body);
+      fadeOutBall(body)
+      // Perform actions here
+    }
+
+    // Function to continuously monitor bodies moving out of the screen
+    function monitorBodiesOutOfScreen() {
+      var bodies = Matter.Composite.allBodies(engine.world);
+
+      // Loop through all bodies in the world
+      bodies.forEach(function (body) {
+        if (isBodyOutOfScreen(body)) {
+          handleBodyOutOfScreen(body);
+        }
+      });
+    }
+
+    // Call the monitorBodiesOutOfScreen function periodically
+    setInterval(monitorBodiesOutOfScreen, 100); // Adjust the interval as needed
+
+
+    //A game made by html, css, javascript and matter js. The game can be played by one player. The player first chooses the football match then a game is set to predict the result for the chosen match. it's similair to Plinko( the gambling online game) except it's not for gambling, it's just for fun and to prdict the upcoming football matches results
+  </script>
+</body>
+
+</html>
+
+
